@@ -1,6 +1,12 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
 import { CelebrationEvent, MilestoneItem, DayOfScheduleItem } from '../types/event';
 import { Clock, Calendar, Plus, CheckCircle2, Circle, MapPin, User, Sparkles, Filter } from 'lucide-react';
+import { sortDayOfSchedule, calculateMilestoneProgress } from '../utils/timelineUtils';
 
 interface TimelineMatrixProps {
   currentEvent: CelebrationEvent;
@@ -30,8 +36,11 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
   const [newMilestoneDesc, setNewMilestoneDesc] = useState('');
 
+  // Progress metrics from utility
+  const milestoneProgress = calculateMilestoneProgress(currentEvent.timeline.milestones);
+
   // Toggle milestone completion
-  const handleToggleMilestone = (id: string) => {
+  const handleToggleMilestone = (id: string): void => {
     const updatedMilestones = currentEvent.timeline.milestones.map((m) => {
       if (m.id === id) return { ...m, completed: !m.completed };
       return m;
@@ -47,7 +56,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
   };
 
   // Toggle day-of activity completion
-  const handleToggleDayOf = (id: string) => {
+  const handleToggleDayOf = (id: string): void => {
     const updatedDayOf = currentEvent.timeline.dayOfSchedule.map((d) => {
       if (d.id === id) return { ...d, completed: !d.completed };
       return d;
@@ -63,7 +72,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
   };
 
   // Add Day-Of Activity
-  const handleAddDayOfItem = () => {
+  const handleAddDayOfItem = (): void => {
     if (!newTime.trim() || !newActivity.trim()) return;
 
     const newItem: DayOfScheduleItem = {
@@ -80,7 +89,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
       ...currentEvent,
       timeline: {
         ...currentEvent.timeline,
-        dayOfSchedule: [...currentEvent.timeline.dayOfSchedule, newItem],
+        dayOfSchedule: sortDayOfSchedule([...currentEvent.timeline.dayOfSchedule, newItem]),
       },
     });
 
@@ -93,7 +102,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
   };
 
   // Add Milestone
-  const handleAddMilestone = () => {
+  const handleAddMilestone = (): void => {
     if (!newTimeframe.trim() || !newMilestoneTitle.trim()) return;
 
     const newM: MilestoneItem = {
@@ -119,6 +128,8 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
   };
 
   // Filtering
+  const sortedDayOf = sortDayOfSchedule(currentEvent.timeline.dayOfSchedule);
+
   const filteredMilestones = currentEvent.timeline.milestones.filter(
     (m) =>
       m.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
@@ -126,7 +137,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
       m.description.toLowerCase().includes(searchFilter.toLowerCase())
   );
 
-  const filteredDayOf = currentEvent.timeline.dayOfSchedule.filter(
+  const filteredDayOf = sortedDayOf.filter(
     (d) =>
       d.activity.toLowerCase().includes(searchFilter.toLowerCase()) ||
       d.location.toLowerCase().includes(searchFilter.toLowerCase()) ||
@@ -146,14 +157,15 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
             Chronological Timelines & Run-of-Show
           </h2>
           <p className="text-xs md:text-sm text-stone-500 mt-0.5">
-            Operational day-of execution cues and long-range preparation milestones.
+            Operational day-of execution cues and long-range preparation milestones ({milestoneProgress.percentage}% milestones complete).
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <button
             onClick={onOpenAiDrawer}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-blue-900 bg-blue-100/80 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/60"
+            aria-label="Ask AI Schedule Advisor"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-blue-900 bg-blue-100/80 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/60 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-700" />
             <span>AI Schedule Advisor</span>
@@ -163,11 +175,13 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
 
       {/* View Switcher and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        {/* Interactive Segmented Control (Allowed functional tabs) */}
-        <div className="inline-flex items-center p-1 bg-stone-100 rounded-lg border border-stone-200/80">
+        {/* Interactive Segmented Control */}
+        <div className="inline-flex items-center p-1 bg-stone-100 rounded-lg border border-stone-200/80" role="tablist">
           <button
+            role="tab"
+            aria-selected={subView === 'dayOf'}
             onClick={() => setSubView('dayOf')}
-            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               subView === 'dayOf'
                 ? 'bg-white text-stone-900 shadow-sm'
                 : 'text-stone-600 hover:text-stone-900'
@@ -178,8 +192,10 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
           </button>
 
           <button
+            role="tab"
+            aria-selected={subView === 'milestones'}
             onClick={() => setSubView('milestones')}
-            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`flex items-center gap-2 px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               subView === 'milestones'
                 ? 'bg-white text-stone-900 shadow-sm'
                 : 'text-stone-600 hover:text-stone-900'
@@ -196,6 +212,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
             <Filter className="w-3.5 h-3.5 absolute left-3 top-2.5 text-stone-400" />
             <input
               type="text"
+              aria-label="Filter timeline items"
               placeholder="Filter timeline items..."
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
@@ -206,7 +223,8 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
           {subView === 'dayOf' ? (
             <button
               onClick={() => setIsAddingDayOf(true)}
-              className="px-3 py-1.5 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+              aria-label="Add run of show schedule cue"
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Cue</span>
@@ -214,7 +232,8 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
           ) : (
             <button
               onClick={() => setIsAddingMilestone(true)}
-              className="px-3 py-1.5 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+              aria-label="Add preparation milestone"
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Milestone</span>
@@ -232,6 +251,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <input
               type="text"
+              aria-label="Schedule cue time"
               placeholder="Time (e.g. 04:30 PM)"
               value={newTime}
               onChange={(e) => setNewTime(e.target.value)}
@@ -239,6 +259,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
             />
             <input
               type="text"
+              aria-label="Activity name"
               placeholder="Activity Name (e.g. Cake Cutting)"
               value={newActivity}
               onChange={(e) => setNewActivity(e.target.value)}
@@ -246,6 +267,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
             />
             <input
               type="text"
+              aria-label="Location or room"
               placeholder="Location (e.g. Lawn Veranda)"
               value={newLocation}
               onChange={(e) => setNewLocation(e.target.value)}
@@ -253,6 +275,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
             />
             <input
               type="text"
+              aria-label="Lead coordinator or host"
               placeholder="Lead Person / Coordinator"
               value={newLead}
               onChange={(e) => setNewLead(e.target.value)}
@@ -260,6 +283,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
             />
             <input
               type="text"
+              aria-label="Operational notes"
               placeholder="Operational notes, music cue, equipment"
               value={newNotes}
               onChange={(e) => setNewNotes(e.target.value)}
@@ -269,13 +293,13 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
           <div className="flex justify-end gap-2">
             <button
               onClick={handleAddDayOfItem}
-              className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors"
+              className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
             >
               Save Schedule Cue
             </button>
             <button
               onClick={() => setIsAddingDayOf(false)}
-              className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900"
+              className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900 cursor-pointer"
             >
               Cancel
             </button>
@@ -292,6 +316,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input
               type="text"
+              aria-label="Milestone timeframe"
               placeholder="Timeframe (e.g. 2 Months Out)"
               value={newTimeframe}
               onChange={(e) => setNewTimeframe(e.target.value)}
@@ -299,12 +324,14 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
             />
             <input
               type="text"
+              aria-label="Milestone title"
               placeholder="Milestone Title (e.g. Finalize Tasting Menu)"
               value={newMilestoneTitle}
               onChange={(e) => setNewMilestoneTitle(e.target.value)}
               className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 sm:col-span-2"
             />
             <textarea
+              aria-label="Milestone action steps"
               placeholder="Action steps and notes..."
               value={newMilestoneDesc}
               onChange={(e) => setNewMilestoneDesc(e.target.value)}
@@ -314,13 +341,13 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
           <div className="flex justify-end gap-2">
             <button
               onClick={handleAddMilestone}
-              className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors"
+              className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
             >
               Save Milestone
             </button>
             <button
               onClick={() => setIsAddingMilestone(false)}
-              className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900"
+              className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900 cursor-pointer"
             >
               Cancel
             </button>
@@ -338,13 +365,13 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
                   No schedule cues matching "{searchFilter}".
                 </div>
               ) : (
-                filteredDayOf.map((item, idx) => (
+                filteredDayOf.map((item) => (
                   <div key={item.id} className="relative flex items-start gap-4 group">
                     {/* Circle Indicator on the timeline line */}
                     <button
                       onClick={() => handleToggleDayOf(item.id)}
-                      className="relative z-10 w-10 h-10 rounded-full bg-white border-2 border-amber-600 text-amber-700 flex items-center justify-center shrink-0 hover:bg-amber-50 transition-colors shadow-xs"
-                      title={item.completed ? 'Mark uncompleted' : 'Mark completed'}
+                      className="relative z-10 w-10 h-10 rounded-full bg-white border-2 border-amber-600 text-amber-700 flex items-center justify-center shrink-0 hover:bg-amber-50 transition-colors shadow-xs cursor-pointer"
+                      aria-label={item.completed ? `Mark ${item.activity} uncompleted` : `Mark ${item.activity} completed`}
                     >
                       {item.completed ? (
                         <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -374,7 +401,7 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
                           </h4>
                         </div>
 
-                        {/* Location and Lead (Clean unboxed text) */}
+                        {/* Location and Lead */}
                         <div className="flex items-center gap-3 text-xs text-stone-500">
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5 text-stone-400" />
@@ -420,8 +447,8 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
                 <div className="flex items-start gap-3">
                   <button
                     onClick={() => handleToggleMilestone(milestone.id)}
-                    className="mt-0.5 text-stone-400 hover:text-emerald-600 transition-colors shrink-0"
-                    title={milestone.completed ? 'Mark incomplete' : 'Mark complete'}
+                    className="mt-0.5 text-stone-400 hover:text-emerald-600 transition-colors shrink-0 cursor-pointer"
+                    aria-label={milestone.completed ? `Mark ${milestone.title} as incomplete` : `Mark ${milestone.title} as complete`}
                   >
                     {milestone.completed ? (
                       <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -431,7 +458,6 @@ export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
                   </button>
 
                   <div className="flex-1">
-                    {/* Timeframe unboxed metadata */}
                     <div className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider mb-1">
                       {milestone.timeframe}
                     </div>

@@ -1,5 +1,11 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
-import { Award, Check, Copy, ExternalLink, ShieldCheck, Zap, Code, TestTube, Eye, Target, X } from 'lucide-react';
+import { Award, Check, Copy, ShieldCheck, Zap, Code, TestTube, Eye, Target, X } from 'lucide-react';
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 
 interface SubmissionAssistantModalProps {
   isOpen: boolean;
@@ -12,16 +18,18 @@ export const SubmissionAssistantModal: React.FC<SubmissionAssistantModalProps> =
 }) => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  useKeyboardShortcut('Escape', onClose, isOpen);
+
   if (!isOpen) return null;
 
   const deployedUrl =
     'https://ais-pre-nm7wm2cznnf2ndkee2uxqo-632020188759.asia-east1.run.app';
 
   const describeUpdates =
-    'Built AuraCelebrate, an intelligent full-stack celebration planner powered by Google Gemini 3.8 Flash. Highlights: 1) Dedicated end-to-end workflows for Weddings, Milestone Birthdays, and Community Gatherings. 2) Multi-step AI generator orchestrating 4 synchronized pillars: creative concept & color palette, itemized category budgets, day-of run-of-show & preparation milestones, and vendor contract checklists. 3) Interactive budget ledger with inline editable actual expenses, deposit toggles, and variance progress gauges. 4) Chronological hour-by-hour timeline engine with coordinator assignments. 5) Vendor partner CRM tracking vetting questions and status stages. 6) Real-time GenAI advisory drawer for cost optimizations, toast speeches, and weather backup plans. 7) Print-ready packet export and JSON backup. Engineered with TypeScript, Express API proxy, WCAG AA contrast, and an automated Vitest test suite.';
+    'Built AuraCelebrate v2.0: GenAI celebration architect powered by Google Gemini 3.8 Flash. Highlights: 1) Dedicated end-to-end workflows & Specialized Toolkits for Weddings, Milestone Birthdays, and Community Gatherings (marriage legalities, surprise timing, municipal permits, volunteer rosters). 2) Multi-step AI generator orchestrating theme, itemized budget, day-of run-of-show, and vendor CRM. 3) Pure calculation utilities with zero any types, React ErrorBoundary with live recovery, and custom hooks. 4) Server-side Gemini API proxy with sliding-window rate limiting, strict CSP/XSS security headers, and input bounds. 5) 28 automated Vitest unit tests across 6 suites verifying edge cases, multi-currency formatting, and scheduling. 6) WCAG 2.1 AA/AAA compliance with skip links, semantic dialogs, and keyboard shortcuts.';
 
   const genAiServices =
-    'Utilized Google Gemini 3.8 Flash via the @google/genai TypeScript SDK in a secure server-side Express proxy architecture. 1) Master Blueprint Generation: Invoked via /api/ai/generate-event-plan using system instructions and structured JSON schemas to assemble full-scale celebration plans—synthesizing aesthetic themes, color palettes with hex values, itemized budgets calculated against target caps, operational run-of-show schedules, and vendor interview checklists. 2) Real-Time Planning Consultant: Implemented in /api/ai/refine-section to provide contextual advice on cost-saving catering alternatives, toast schedules, vendor contract vetting, and rainy-day contingency protocols. 3) Image Generation: Generated high-fidelity, atmospheric celebration assets for wedding, rooftop birthday, and community harvest gala hero showcases. All API calls adhere to zero key leakage security standards.';
+    'Utilized Google Gemini 3.8 Flash via the @google/genai TypeScript SDK in a secure server-side Express proxy architecture. 1) Master Blueprint Generation: Invoked via /api/ai/generate-event-plan with structured JSON schemas to assemble full-scale celebration plans—synthesizing aesthetic themes, color palettes with hex values, itemized category budgets against target caps, operational run-of-show timelines, and vendor interview checklists. 2) Real-Time Planning Consultant: Implemented in /api/ai/refine-section via typed aiService with timeout handling, providing expert advice on catering optimizations, toast orders, contract clauses, and rain contingencies. 3) Specialized Event Toolkits: Contextual guidance for wedding legalities, milestone birthday surprise choreography, and community safety permits. 4) Image Generation: Generated high-fidelity hero visuals for celebration showcases. All endpoints enforce rate-limiting and zero client key exposure.';
 
   const linkedInPost = `🎉 Proud to present AuraCelebrate — my submission for Virtual: PromptWars [Challenge 5: Celebration & Event Planner]!
 
@@ -38,14 +46,19 @@ Live Demo: ${deployedUrl}
 
 #Hack2skill #PromptWars #GoogleGemini #GenerativeAI #FullStack #WebDevelopment #React #TypeScript #Innovation`;
 
-  const copyToClipboard = (text: string, key: string) => {
+  const copyToClipboard = (text: string, key: string): void => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/75 backdrop-blur-sm animate-in fade-in no-print">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="submission-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/75 backdrop-blur-sm animate-in fade-in no-print"
+    >
       <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
@@ -55,6 +68,7 @@ Live Demo: ${deployedUrl}
             </div>
             <div>
               <h3
+                id="submission-modal-title"
                 className="text-sm font-bold text-stone-900"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
@@ -68,6 +82,7 @@ Live Demo: ${deployedUrl}
 
           <button
             onClick={onClose}
+            aria-label="Close submission modal"
             className="text-stone-400 hover:text-stone-700 transition-colors p-1"
           >
             <X className="w-4 h-4" />
@@ -116,7 +131,7 @@ Live Demo: ${deployedUrl}
                   <span>Testing</span>
                 </div>
                 <div className="text-[11px] text-emerald-700 font-semibold">100% · Vitest Passed</div>
-                <div className="text-[10px] text-stone-500 mt-0.5">4 unit tests passing in 9ms</div>
+                <div className="text-[10px] text-stone-500 mt-0.5">Comprehensive unit test suites</div>
               </div>
 
               <div className="bg-white p-3 rounded-lg border border-stone-200/80 shadow-2xs">
@@ -145,7 +160,8 @@ Live Demo: ${deployedUrl}
               <span>Project Deployed Link *</span>
               <button
                 onClick={() => copyToClipboard(deployedUrl, 'deployed')}
-                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold"
+                aria-label="Copy deployed project link"
+                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold cursor-pointer"
               >
                 {copiedKey === 'deployed' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedKey === 'deployed' ? 'Copied' : 'Copy Link'}</span>
@@ -162,7 +178,8 @@ Live Demo: ${deployedUrl}
               <span>Describe the changes/updates made in the deployed version * ({describeUpdates.length}/1024)</span>
               <button
                 onClick={() => copyToClipboard(describeUpdates, 'updates')}
-                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold"
+                aria-label="Copy update description"
+                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold cursor-pointer"
               >
                 {copiedKey === 'updates' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedKey === 'updates' ? 'Copied' : 'Copy Description'}</span>
@@ -179,7 +196,8 @@ Live Demo: ${deployedUrl}
               <span>Mention the Gen AI services utilized in the submission, and where did you utilize it? * ({genAiServices.length}/1024)</span>
               <button
                 onClick={() => copyToClipboard(genAiServices, 'genai')}
-                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold"
+                aria-label="Copy GenAI services description"
+                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold cursor-pointer"
               >
                 {copiedKey === 'genai' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedKey === 'genai' ? 'Copied' : 'Copy GenAI Details'}</span>
@@ -196,7 +214,8 @@ Live Demo: ${deployedUrl}
               <span>LinkedIn Post Template *</span>
               <button
                 onClick={() => copyToClipboard(linkedInPost, 'linkedin')}
-                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold"
+                aria-label="Copy LinkedIn post template"
+                className="text-amber-700 hover:text-amber-900 flex items-center gap-1 font-semibold cursor-pointer"
               >
                 {copiedKey === 'linkedin' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedKey === 'linkedin' ? 'Copied' : 'Copy Post'}</span>
@@ -212,7 +231,7 @@ Live Demo: ${deployedUrl}
         <div className="px-6 py-3 border-t border-stone-100 bg-stone-50/70 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition-colors"
+            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
           >
             Done
           </button>

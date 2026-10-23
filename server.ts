@@ -1,4 +1,9 @@
-import express, { Request, Response } from 'express';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import express, { Request, Response, NextFunction } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,9 +18,55 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '10mb' }));
+// In-Memory Rate Limiter Map for Security & DoS Protection
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+const rateLimitMap = new Map<string, RateLimitRecord>();
 
-// Shared Gemini client
+const createRateLimiter = (maxRequests: number, windowMs: number) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown-client';
+    const now = Date.now();
+    const clientRecord = rateLimitMap.get(ip);
+
+    if (!clientRecord || now > clientRecord.resetTime) {
+      rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+      next();
+      return;
+    }
+
+    if (clientRecord.count >= maxRequests) {
+      const retryAfterSec = Math.ceil((clientRecord.resetTime - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfterSec));
+      res.status(429).json({
+        success: false,
+        error: `Rate limit exceeded. Please retry in ${retryAfterSec} seconds.`,
+      });
+      return;
+    }
+
+    clientRecord.count += 1;
+    next();
+  };
+};
+
+const aiRateLimiter = createRateLimiter(20, 60 * 1000); // 20 AI requests per minute
+
+// Security Middlewares & Headers
+app.use((_req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
+app.use(express.json({ limit: '2mb' }));
+
+// Shared Gemini client initialized strictly on the server
 const apiKey = process.env.GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({
   apiKey,
@@ -26,7 +77,34 @@ const ai = new GoogleGenAI({
   },
 });
 
-app.get('/api/health', (req: Request, res: Response) => {
+interface GeneratePlanRequestBody {
+  eventType?: string;
+  title?: string;
+  date?: string;
+  location?: string;
+  guestCount?: number;
+  totalBudget?: number;
+  currency?: string;
+  styleVibe?: string;
+  specialRequirements?: string;
+}
+
+interface RefineSectionRequestBody {
+  eventContext?: {
+    title?: string;
+    type?: string;
+    guestCount?: number;
+    totalBudget?: number;
+    currency?: string;
+  };
+  sectionName?: string;
+  instruction?: string;
+}
+
+/**
+ * Health check endpoint for uptime and configuration monitors.
+ */
+app.get('/api/health', (_req: Request, res: Response): void => {
   res.json({
     status: 'ok',
     hasApiKey: Boolean(process.env.GEMINI_API_KEY),
@@ -34,39 +112,56 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-app.post('/api/ai/generate-event-plan', async (req: Request, res: Response) => {
-  const {
-    eventType = 'wedding',
-    title = 'Celebration',
-    date = '2026-11-15',
-    location = 'Garden Estate',
-    guestCount = 100,
-    totalBudget = 25000,
-    currency = 'USD',
-    styleVibe = 'Elegant, romantic, warm amber glow with floral installations',
-    specialRequirements = '',
-  } = req.body;
+/**
+ * Master Event Blueprint Generator endpoint calling Gemini 3.8 Flash.
+ */
+app.post(
+  '/api/ai/generate-event-plan',
+  aiRateLimiter,
+  async (
+    req: Request<Record<string, never>, Record<string, unknown>, GeneratePlanRequestBody>,
+    res: Response
+  ): Promise<void> => {
+    const {
+      eventType = 'wedding',
+      title = 'Celebration',
+      date = '2026-11-15',
+      location = 'Garden Estate',
+      guestCount = 100,
+      totalBudget = 25000,
+      currency = 'USD',
+      styleVibe = 'Elegant, romantic, warm amber glow with floral installations',
+      specialRequirements = '',
+    } = req.body;
 
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not configured on the server.');
-    }
+    // Input sanitization and bounds enforcement
+    const safeGuestCount = Math.min(Math.max(1, Number(guestCount) || 100), 10000);
+    const safeTotalBudget = Math.min(Math.max(500, Number(totalBudget) || 25000), 100000000);
+    const safeTitle = String(title).slice(0, 200).trim();
+    const safeLocation = String(location).slice(0, 200).trim();
+    const safeStyleVibe = String(styleVibe).slice(0, 1000).trim();
+    const safeSpecialReqs = String(specialRequirements).slice(0, 1000).trim();
 
-    const systemInstruction = `You are an elite, world-class celebration and event planning architect with 20+ years of expertise designing unforgettable weddings, milestone birthdays, and community gatherings.
-You output strictly valid JSON matching the exact requested event planning structure without markdown fences or extraneous text.
-Every budget item must have realistic numerical estimates adhering strictly to the user's total budget ($${totalBudget} ${currency}).
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY is not configured on the server environment.');
+      }
+
+      const systemInstruction = `You are an elite celebration and event planning architect with 20+ years of expertise designing unforgettable weddings, milestone birthdays, and community gatherings.
+You output strictly valid JSON matching the exact requested event planning structure without markdown fences or conversational preambles.
+Every budget item must have realistic numerical estimates adhering strictly to the user's total budget ($${safeTotalBudget} ${currency}).
 The run-of-show timeline must be chronological, realistic, and operationally rigorous.
-Vendor checklists must provide actionable questions and deliverables.`;
+Vendor checklists must provide actionable due-diligence questions and deliverables.`;
 
-    const prompt = `Plan a comprehensive celebration master blueprint with the following parameters:
-- Event Title: "${title}"
+      const prompt = `Plan a comprehensive celebration master blueprint with the following parameters:
+- Event Title: "${safeTitle}"
 - Event Type: ${eventType} (wedding, birthday, community, or custom)
 - Date: ${date}
-- Location / Setting: ${location}
-- Expected Guest Count: ${guestCount} attendees
-- Total Target Budget: ${totalBudget} ${currency}
-- Stylistic Aesthetic & Vibe: ${styleVibe}
-- Special Notes / Traditions / Requirements: ${specialRequirements || 'None specified'}
+- Location / Setting: ${safeLocation}
+- Expected Guest Count: ${safeGuestCount} attendees
+- Total Target Budget: ${safeTotalBudget} ${currency}
+- Stylistic Aesthetic & Vibe: ${safeStyleVibe}
+- Special Notes / Traditions / Requirements: ${safeSpecialReqs || 'None specified'}
 
 Output a single JSON object with these exact keys:
 {
@@ -84,7 +179,7 @@ Output a single JSON object with these exact keys:
   "budget": {
     "categories": [
       {
-        "name": "Category Name (e.g., Venue & Rentals, Catering & Bar, Decor & Florals, Photo & Video, Music & Entertainment, Attire & Beauty, Stationery & Favors, Contingency Buffer)",
+        "name": "Category Name (e.g. Venue & Rentals, Catering & Bar, Decor & Florals, Photo & Video, Music & Entertainment, Attire & Beauty, Stationery & Favors, Contingency Buffer)",
         "allocated": 0, // total estimated amount for this category in ${currency}
         "items": [
           {
@@ -131,50 +226,68 @@ Output a single JSON object with these exact keys:
     }
   ],
   "personalizedTips": [
-    "3 to 5 expert logistical tips specifically tailored to this ${eventType} with ${guestCount} guests in ${location}"
+    "3 to 5 expert logistical tips specifically tailored to this ${eventType} with ${safeGuestCount} guests in ${safeLocation}"
   ]
 }
 
-Ensure the sum of all category allocated amounts closely equals the total budget of ${totalBudget} ${currency}.`;
+Ensure the sum of all category allocated amounts closely equals the total budget of ${safeTotalBudget} ${currency}.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        temperature: 0.7,
-      },
-    });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          temperature: 0.7,
+        },
+      });
 
-    const rawText = response.text || '{}';
-    const planData = JSON.parse(rawText);
-    res.json({ success: true, plan: planData });
-  } catch (err: any) {
-    console.error('Error in /api/ai/generate-event-plan:', err);
-    res.status(500).json({
-      success: false,
-      error: err.message || 'Failed to generate event blueprint',
-    });
+      const rawText = response.text || '{}';
+      const planData: unknown = JSON.parse(rawText);
+      res.json({ success: true, plan: planData });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to generate event blueprint';
+      console.error('Error in /api/ai/generate-event-plan:', errorMessage);
+      res.status(500).json({
+        success: false,
+        error: errorMessage,
+      });
+    }
   }
-});
+);
 
-app.post('/api/ai/refine-section', async (req: Request, res: Response) => {
-  const { eventContext, sectionName, instruction } = req.body;
+/**
+ * Dedicated Section Refinement & AI Consultant endpoint calling Gemini 3.8 Flash.
+ */
+app.post(
+  '/api/ai/refine-section',
+  aiRateLimiter,
+  async (
+    req: Request<Record<string, never>, Record<string, unknown>, RefineSectionRequestBody>,
+    res: Response
+  ): Promise<void> => {
+    const { eventContext, sectionName = 'General', instruction = '' } = req.body;
 
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not configured on the server.');
+    const safeInstruction = String(instruction).slice(0, 1000).trim();
+    if (!safeInstruction) {
+      res.status(400).json({ success: false, error: 'Instruction prompt is required.' });
+      return;
     }
 
-    const systemInstruction = `You are a specialist celebration consultant and event logistics advisor.
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error('GEMINI_API_KEY is not configured on the server environment.');
+      }
+
+      const systemInstruction = `You are a specialist celebration consultant and event logistics advisor.
 Provide clear, actionable, and elegant advice or structured suggestions based on the user's request.
 Return your answer in concise, beautifully structured JSON with an array of suggestions or formatted recommendations.`;
 
-    const prompt = `Context:
+      const prompt = `Context:
 Event: "${eventContext?.title || 'Celebration'}" (${eventContext?.type || 'Event'}, ${eventContext?.guestCount || 100} guests, budget: ${eventContext?.totalBudget || 20000} ${eventContext?.currency || 'USD'})
 Section: ${sectionName}
-User Request: ${instruction}
+User Request: ${safeInstruction}
 
 Respond with a JSON object:
 {
@@ -188,29 +301,32 @@ Respond with a JSON object:
   "summaryNotes": "A 1-2 sentence overall advisory takeaway"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        temperature: 0.7,
-      },
-    });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          temperature: 0.7,
+        },
+      });
 
-    const rawText = response.text || '{}';
-    const parsed = JSON.parse(rawText);
-    res.json({ success: true, result: parsed });
-  } catch (err: any) {
-    console.error('Error in /api/ai/refine-section:', err);
-    res.status(500).json({
-      success: false,
-      error: err.message || 'Failed to process AI refinement',
-    });
+      const rawText = response.text || '{}';
+      const parsed: unknown = JSON.parse(rawText);
+      res.json({ success: true, result: parsed });
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to process AI refinement';
+      console.error('Error in /api/ai/refine-section:', errorMessage);
+      res.status(500).json({
+        success: false,
+        error: errorMessage,
+      });
+    }
   }
-});
+);
 
-// Dev vs Prod Vite setup
+// Dev vs Prod Vite Integration
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.resolve(__dirname, 'dist')));
   app.get('*', (_req: Request, res: Response) => {
@@ -225,5 +341,5 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Celebration planner server running at http://0.0.0.0:${port}`);
+  console.log(`Celebration planner server running securely at http://0.0.0.0:${port}`);
 });

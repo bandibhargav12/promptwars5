@@ -60,6 +60,15 @@ export interface VendorItem {
   checklist: string[];
 }
 
+export interface SpecializedToolItem {
+  id: string;
+  category: string;
+  title: string;
+  detail: string;
+  completed: boolean;
+  notes?: string;
+}
+
 export interface CelebrationEvent {
   id: string;
   title: string;
@@ -81,6 +90,8 @@ export interface CelebrationEvent {
     dayOfSchedule: DayOfScheduleItem[];
   };
   vendors: VendorItem[];
+  specializedTools?: SpecializedToolItem[];
   personalizedTips: string[];
   createdAt: string;
 }
+

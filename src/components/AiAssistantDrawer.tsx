@@ -1,6 +1,13 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
 import { CelebrationEvent } from '../types/event';
 import { Sparkles, X, Send, Copy, Check, Lightbulb, ArrowRight, Loader2 } from 'lucide-react';
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
+import { aiService } from '../services/aiService';
 
 interface AiAssistantDrawerProps {
   isOpen: boolean;
@@ -14,13 +21,17 @@ interface AiRecommendation {
   impact?: string;
 }
 
+interface RefineResponseResult {
+  recommendations?: AiRecommendation[];
+  summaryNotes?: string;
+}
+
 export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
   isOpen,
   onClose,
   currentEvent,
 }) => {
   const [prompt, setPrompt] = useState('');
-  const [section, setSection] = useState('All');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<{
     recommendations: AiRecommendation[];
@@ -28,6 +39,8 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
   } | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useKeyboardShortcut('Escape', onClose, isOpen && !isLoading);
 
   if (!isOpen) return null;
 
@@ -59,51 +72,50 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
     },
   ];
 
-  const handleAsk = async (userPrompt: string, secName = 'General') => {
+  const handleAsk = async (userPrompt: string, secName = 'General'): Promise<void> => {
     if (!userPrompt.trim()) return;
     setIsLoading(true);
     setErrorMessage(null);
     setResults(null);
 
     try {
-      const response = await fetch('/api/ai/refine-section', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventContext: {
-            title: currentEvent.title,
-            type: currentEvent.type,
-            guestCount: currentEvent.guestCount,
-            totalBudget: currentEvent.totalBudget,
-            currency: currentEvent.currency,
-          },
-          sectionName: secName,
-          instruction: userPrompt,
-        }),
+      const result = await aiService.refineSection(
+        {
+          title: currentEvent.title,
+          type: currentEvent.type,
+          guestCount: currentEvent.guestCount,
+          totalBudget: currentEvent.totalBudget,
+          currency: currentEvent.currency,
+        },
+        secName,
+        userPrompt
+      );
+
+      setResults({
+        recommendations: result.recommendations || [],
+        summaryNotes: result.summaryNotes,
       });
-
-      const data = await response.json();
-      if (!data.success || !data.result) {
-        throw new Error(data.error || 'Failed to generate recommendations.');
-      }
-
-      setResults(data.result);
-    } catch (err: any) {
-      console.error(err);
-      setErrorMessage(err.message || 'Could not fetch AI suggestions.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not fetch AI suggestions.';
+      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCopy = (text: string, index: number) => {
+  const handleCopy = (text: string, index: number): void => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/40 backdrop-blur-xs animate-in fade-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ai-drawer-title"
+      className="fixed inset-0 z-50 flex justify-end bg-stone-950/40 backdrop-blur-xs animate-in fade-in"
+    >
       <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-stone-200">
         {/* Drawer Header */}
         <div className="p-5 border-b border-stone-200 flex items-center justify-between bg-stone-50/70">
@@ -112,7 +124,11 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-stone-900" style={{ fontFamily: 'var(--font-heading)' }}>
+              <h3
+                id="ai-drawer-title"
+                className="text-sm font-bold text-stone-900"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
                 GenAI Planning Consultant
               </h3>
               <p className="text-[11px] text-stone-500 truncate max-w-xs">
@@ -123,6 +139,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
 
           <button
             onClick={onClose}
+            aria-label="Close AI consultant drawer"
             className="text-stone-400 hover:text-stone-700 transition-colors p-1"
           >
             <X className="w-4 h-4" />
@@ -159,14 +176,14 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
+            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
               {errorMessage}
             </div>
           )}
 
           {/* Loading State */}
           {isLoading && (
-            <div className="py-12 text-center space-y-3">
+            <div className="py-12 text-center space-y-3" aria-live="polite">
               <Loader2 className="w-7 h-7 text-amber-600 animate-spin mx-auto" />
               <p className="text-xs text-stone-500">
                 Consulting Gemini on event logistics...
@@ -176,7 +193,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
 
           {/* Results Display */}
           {results && (
-            <div className="space-y-4 animate-in fade-in">
+            <div className="space-y-4 animate-in fade-in" aria-live="polite">
               {results.summaryNotes && (
                 <div className="p-3.5 bg-amber-50/70 border border-amber-200/60 rounded-xl text-xs text-amber-950 font-medium leading-relaxed">
                   {results.summaryNotes}
@@ -202,8 +219,8 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
                             rIdx
                           )
                         }
+                        aria-label={`Copy recommendation ${rec.title}`}
                         className="text-stone-400 hover:text-stone-700 p-1 shrink-0"
-                        title="Copy recommendation"
                       >
                         {copiedIndex === rIdx ? (
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -240,6 +257,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
           >
             <input
               type="text"
+              aria-label="Ask celebration consultant a question"
               placeholder="Ask anything (e.g. Suggest a signature mocktail...)"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -248,6 +266,7 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
             />
             <button
               type="submit"
+              aria-label="Send prompt to Gemini"
               disabled={isLoading || !prompt.trim()}
               className="p-2 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white rounded-xl transition-colors cursor-pointer"
             >

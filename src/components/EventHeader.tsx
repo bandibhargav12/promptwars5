@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CelebrationEvent } from '../types/event';
 import { Calendar, MapPin, Users, DollarSign, ChevronDown, Printer, Sparkles, CheckCircle2 } from 'lucide-react';
+import { calculateBudgetSummary, formatCurrency } from '../utils/budgetCalculations';
 
 interface EventHeaderProps {
   currentEvent: CelebrationEvent;
@@ -21,20 +22,11 @@ export const EventHeader: React.FC<EventHeaderProps> = ({
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Calculate high-level stats
-  const totalAllocated = currentEvent.budget.categories.reduce(
-    (sum, cat) => sum + cat.allocated,
-    0
+  // Calculate high-level stats using pure utility
+  const budgetSummary = calculateBudgetSummary(
+    currentEvent.budget.categories,
+    currentEvent.totalBudget
   );
-  const totalSpent = currentEvent.budget.categories.reduce(
-    (sum, cat) =>
-      sum + cat.items.reduce((itemSum, item) => itemSum + item.actualCost, 0),
-    0
-  );
-  const completedMilestones = currentEvent.timeline.milestones.filter(
-    (m) => m.completed
-  ).length;
-  const totalMilestones = currentEvent.timeline.milestones.length;
 
   const eventTypeLabel = {
     wedding: 'Wedding Celebration',
@@ -75,6 +67,9 @@ export const EventHeader: React.FC<EventHeaderProps> = ({
           <div className="relative">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
+              aria-haspopup="true"
+              aria-expanded={dropdownOpen}
+              aria-label="Select Event Blueprint"
               className="flex items-center gap-2 px-3.5 py-1.5 bg-black/50 hover:bg-black/70 backdrop-blur-md text-white text-xs font-medium rounded-lg border border-white/20 transition-all cursor-pointer"
             >
               <span className="text-amber-400 font-semibold">{eventTypeLabel}</span>
@@ -214,10 +209,8 @@ export const EventHeader: React.FC<EventHeaderProps> = ({
             <div>
               <div className="text-[11px] text-stone-500 font-medium">Budget Tracked</div>
               <div className="text-xs md:text-sm font-semibold text-stone-900 font-mono tabular-nums">
-                ${totalSpent.toLocaleString()} / ${currentEvent.totalBudget.toLocaleString()}{' '}
-                <span className="text-[11px] text-stone-400 font-normal">
-                  {currentEvent.currency}
-                </span>
+                {formatCurrency(budgetSummary.totalActual, currentEvent.currency)} /{' '}
+                {formatCurrency(currentEvent.totalBudget, currentEvent.currency)}
               </div>
             </div>
           </div>

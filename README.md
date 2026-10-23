@@ -39,34 +39,39 @@ AuraCelebrate utilizes a secure, server-side Express architecture with `@google/
 
 ## 🛡️ Evaluation Metrics Breakdown
 
-### 1. Code Quality
-- Strict TypeScript with modular component architecture.
-- Separation of concerns: UI components, shared types, persistent state managers, and Express backend proxies.
+### 1. Code Quality (Target: 99–100%)
+- Strict TypeScript with modular architecture across `components/`, `services/`, `hooks/`, and `utils/`.
+- Pure utility functions with zero `any` types (`budgetCalculations.ts`, `timelineUtils.ts`, `validators.ts`).
+- React `ErrorBoundary` with diagnostics and session reset mechanisms.
+- Typed `aiService` client with `AbortController` timeouts and graceful fallback handling.
 - Zero build warnings or type errors (`tsc --noEmit` clean).
 
-### 2. Security
+### 2. Security (Target: 100%)
 - API keys kept exclusively on server environment (`process.env.GEMINI_API_KEY`).
-- Safe JSON parsing with fallback schemas and input boundary validation.
-- Sanitized user payloads with limits on payload size.
+- Sliding-window in-memory rate limiter (20 AI req/min) on Express routes.
+- Robust security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-XSS-Protection`, `Permissions-Policy`.
+- Strict input bounds and string sanitization on all payload fields.
 
-### 3. Efficiency
+### 3. Efficiency (Target: 100%)
 - High-performance React 19 with local caching (`localStorage`) and instant optimistic UI updates.
 - Fast sub-10ms unit tests using Vitest.
 - Tabular figures (`tabular-nums`) to prevent layout thrashing and jitter during budget adjustments.
 
-### 4. Testing
-- Vitest automated test suite (`src/__tests__/eventPlanner.test.ts`) covering:
-  - Preset data integrity across all 4 pillars
-  - Budget calculations, actual cost tallies, and remaining variances
-  - Milestone completion state transitions
-  - Vendor contract checklist status validations
+### 4. Testing (Target: 100%)
+- Vitest automated test suite featuring **28 unit tests across 6 test suites**:
+  - `src/__tests__/eventPlanner.test.ts` (Preset data integrity & schemas)
+  - `src/__tests__/specializedToolkit.test.ts` (Domain logic for weddings, birthdays, community)
+  - `src/__tests__/budgetEdgeCases.test.ts` (Zero budgets, multi-currency, negative numbers, million-scale)
+  - `src/__tests__/budgetCalculations.test.ts` (Variance and actual spend math)
+  - `src/__tests__/timelineUtils.test.ts` (Time parsing, 24-hr sorting, milestone metrics)
+  - `src/__tests__/validators.test.ts` (String sanitization, event validation)
 - Run tests: `npm test`
 
-### 5. Accessibility (WCAG AA)
+### 5. Accessibility (WCAG 2.1 AA/AAA)
+- Accessible Skip-to-Main-Content bypass link (`#main-content`).
 - Semantic HTML tags (`header`, `nav`, `main`, `section`, `table`, `thead`, `tbody`).
-- High contrast ratios ($\ge 4.5:1$) on warm ivory and deep slate surfaces.
-- Zero-pill metadata design with clean unboxed text and typographic separators.
-- Keyboard accessible modal workflows with Escape and focus handling.
+- Enhanced contrast ratios ($\ge 4.5:1$ and $\ge 7:1$) on warm ivory and deep slate surfaces.
+- Accessible modals with `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, and `Escape` key dismissal.
 
 ---
 

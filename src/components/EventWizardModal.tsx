@@ -1,11 +1,74 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
-import { EventType, CelebrationEvent } from '../types/event';
+import { EventType, CelebrationEvent, ColorSwatch } from '../types/event';
 import { Sparkles, X, Heart, Cake, Users2, Compass, Loader2, ArrowRight, Check } from 'lucide-react';
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
+import { aiService } from '../services/aiService';
 
 interface EventWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEventCreated: (newEvent: CelebrationEvent) => void;
+}
+
+interface RawGeneratedItem {
+  name?: string;
+  estimatedCost?: number;
+  notes?: string;
+}
+
+interface RawGeneratedCategory {
+  name?: string;
+  allocated?: number;
+  items?: RawGeneratedItem[];
+}
+
+interface RawGeneratedMilestone {
+  timeframe?: string;
+  title?: string;
+  description?: string;
+}
+
+interface RawGeneratedDayOf {
+  time?: string;
+  activity?: string;
+  location?: string;
+  leadPerson?: string;
+  notes?: string;
+}
+
+interface RawGeneratedVendor {
+  category?: string;
+  name?: string;
+  contact?: string;
+  quoteAmount?: number;
+  notes?: string;
+  checklist?: string[];
+}
+
+interface RawGeneratedPlan {
+  theme?: {
+    title?: string;
+    aesthetic?: string;
+    atmosphere?: string;
+    colorPalette?: ColorSwatch[];
+    decorConcept?: string;
+    musicStyle?: string;
+    invitationWording?: string;
+  };
+  budget?: {
+    categories?: RawGeneratedCategory[];
+  };
+  timeline?: {
+    milestones?: RawGeneratedMilestone[];
+    dayOfSchedule?: RawGeneratedDayOf[];
+  };
+  vendors?: RawGeneratedVendor[];
+  personalizedTips?: string[];
 }
 
 export const EventWizardModal: React.FC<EventWizardModalProps> = ({
@@ -34,10 +97,13 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
   const [loadingStepText, setLoadingStepText] = useState('Connecting to Gemini AI...');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Accessible Escape key listener
+  useKeyboardShortcut('Escape', onClose, isOpen && !isLoading);
+
   if (!isOpen) return null;
 
   // Handle Event Type Selection and preset defaults
-  const handleSelectType = (type: EventType) => {
+  const handleSelectType = (type: EventType): void => {
     setEventType(type);
     if (type === 'wedding') {
       setTitle('Enchanted Summer Solstice Wedding');
@@ -63,7 +129,7 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
   };
 
   // Submit to Server Gemini API
-  const handleGenerate = async () => {
+  const handleGenerate = async (): Promise<void> => {
     setIsLoading(true);
     setErrorMessage(null);
     setStep(4);
@@ -83,30 +149,20 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
     }, 1800);
 
     try {
-      const response = await fetch('/api/ai/generate-event-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventType,
-          title,
-          date,
-          location,
-          guestCount,
-          totalBudget,
-          currency,
-          styleVibe,
-          specialRequirements,
-        }),
+      const blueprint = await aiService.generateEventBlueprint({
+        eventType,
+        title,
+        date,
+        location,
+        guestCount,
+        totalBudget,
+        currency,
+        styleVibe,
+        specialRequirements,
       });
 
       clearInterval(interval);
-      const data = await response.json();
-
-      if (!data.success || !data.plan) {
-        throw new Error(data.error || 'Failed to generate event blueprint.');
-      }
-
-      const rawPlan = data.plan;
+      const rawPlan = blueprint as RawGeneratedPlan;
 
       // Construct a full CelebrationEvent object
       const newEvent: CelebrationEvent = {
@@ -135,29 +191,29 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
           invitationWording: rawPlan.theme?.invitationWording || `You are warmly invited to join in celebrating ${title}.`,
         },
         budget: {
-          categories: (rawPlan.budget?.categories || []).map((cat: any, cIdx: number) => ({
+          categories: (rawPlan.budget?.categories || []).map((cat: RawGeneratedCategory, cIdx: number) => ({
             id: `cat-${cIdx}-${Date.now()}`,
             name: cat.name || `Category ${cIdx + 1}`,
-            allocated: cat.allocated || 0,
-            items: (cat.items || []).map((item: any, iIdx: number) => ({
+            allocated: Number(cat.allocated) || 0,
+            items: (cat.items || []).map((item: RawGeneratedItem, iIdx: number) => ({
               id: `item-${cIdx}-${iIdx}-${Date.now()}`,
               name: item.name || 'Expense Item',
-              estimatedCost: item.estimatedCost || 0,
-              actualCost: item.estimatedCost || 0,
+              estimatedCost: Number(item.estimatedCost) || 0,
+              actualCost: Number(item.estimatedCost) || 0,
               paid: false,
               notes: item.notes || '',
             })),
           })),
         },
         timeline: {
-          milestones: (rawPlan.timeline?.milestones || []).map((m: any, mIdx: number) => ({
+          milestones: (rawPlan.timeline?.milestones || []).map((m: RawGeneratedMilestone, mIdx: number) => ({
             id: `m-${mIdx}-${Date.now()}`,
             timeframe: m.timeframe || 'Preparation',
             title: m.title || 'Milestone Task',
             description: m.description || '',
             completed: false,
           })),
-          dayOfSchedule: (rawPlan.timeline?.dayOfSchedule || []).map((d: any, dIdx: number) => ({
+          dayOfSchedule: (rawPlan.timeline?.dayOfSchedule || []).map((d: RawGeneratedDayOf, dIdx: number) => ({
             id: `d-${dIdx}-${Date.now()}`,
             time: d.time || `${10 + dIdx}:00 AM`,
             activity: d.activity || 'Activity',
@@ -167,12 +223,12 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
             completed: false,
           })),
         },
-        vendors: (rawPlan.vendors || []).map((v: any, vIdx: number) => ({
+        vendors: (rawPlan.vendors || []).map((v: RawGeneratedVendor, vIdx: number) => ({
           id: `v-${vIdx}-${Date.now()}`,
           category: v.category || 'Production',
           name: v.name || 'Vendor Partner',
           contact: v.contact || 'Inquiry pending',
-          quoteAmount: v.quoteAmount || 0,
+          quoteAmount: Number(v.quoteAmount) || 0,
           status: 'In Talks',
           notes: v.notes || '',
           checklist: v.checklist || ['Review contract terms', 'Confirm delivery schedule'],
@@ -186,12 +242,10 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
 
       onEventCreated(newEvent);
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearInterval(interval);
-      console.error(err);
-      setErrorMessage(
-        err.message || 'Error communicating with Gemini AI. Please check your network and API credentials.'
-      );
+      const msg = err instanceof Error ? err.message : 'Error communicating with Gemini AI.';
+      setErrorMessage(msg);
       setStep(3);
     } finally {
       setIsLoading(false);
@@ -199,7 +253,12 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-sm animate-in fade-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wizard-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-sm animate-in fade-in"
+    >
       <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Top Header */}
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
@@ -208,7 +267,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-stone-900" style={{ fontFamily: 'var(--font-heading)' }}>
+              <h3
+                id="wizard-modal-title"
+                className="text-sm font-bold text-stone-900"
+                style={{ fontFamily: 'var(--font-heading)' }}
+              >
                 GenAI Celebration Planner
               </h3>
               <p className="text-[11px] text-stone-500">
@@ -220,6 +283,7 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
           {!isLoading && (
             <button
               onClick={onClose}
+              aria-label="Close planner wizard"
               className="text-stone-400 hover:text-stone-700 transition-colors p-1"
             >
               <X className="w-4 h-4" />
@@ -230,7 +294,7 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700" role="alert">
               {errorMessage}
             </div>
           )}
@@ -341,10 +405,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
 
               <div className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="wizard-event-title" className="block text-xs font-semibold text-stone-700 mb-1">
                     Celebration Title
                   </label>
                   <input
+                    id="wizard-event-title"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -355,10 +420,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label htmlFor="wizard-event-date" className="block text-xs font-semibold text-stone-700 mb-1">
                       Event Date
                     </label>
                     <input
+                      id="wizard-event-date"
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
@@ -367,10 +433,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label htmlFor="wizard-event-location" className="block text-xs font-semibold text-stone-700 mb-1">
                       Setting / Venue
                     </label>
                     <input
+                      id="wizard-event-location"
                       type="text"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
@@ -382,10 +449,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label htmlFor="wizard-event-guests" className="block text-xs font-semibold text-stone-700 mb-1">
                       Guest Count
                     </label>
                     <input
+                      id="wizard-event-guests"
                       type="number"
                       min={5}
                       max={5000}
@@ -396,10 +464,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label htmlFor="wizard-event-budget" className="block text-xs font-semibold text-stone-700 mb-1">
                       Total Budget Target
                     </label>
                     <input
+                      id="wizard-event-budget"
                       type="number"
                       step={500}
                       value={totalBudget}
@@ -409,10 +478,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    <label htmlFor="wizard-event-currency" className="block text-xs font-semibold text-stone-700 mb-1">
                       Currency
                     </label>
                     <select
+                      id="wizard-event-currency"
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
                       className="w-full px-3.5 py-2 text-xs rounded-lg border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
@@ -444,10 +514,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
 
               <div className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="wizard-event-vibe" className="block text-xs font-semibold text-stone-700 mb-1">
                     Aesthetic Direction & Desired Ambiance
                   </label>
                   <textarea
+                    id="wizard-event-vibe"
                     rows={3}
                     value={styleVibe}
                     onChange={(e) => setStyleVibe(e.target.value)}
@@ -476,10 +547,11 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  <label htmlFor="wizard-event-special" className="block text-xs font-semibold text-stone-700 mb-1">
                     Special Rituals, Dietary Needs, or Must-Haves
                   </label>
                   <textarea
+                    id="wizard-event-special"
                     rows={2}
                     value={specialRequirements}
                     onChange={(e) => setSpecialRequirements(e.target.value)}
@@ -493,7 +565,7 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
 
           {/* STEP 4: GENERATING WITH GEMINI (PROGRESS SCREEN) */}
           {step === 4 && (
-            <div className="py-12 px-4 text-center space-y-6">
+            <div className="py-12 px-4 text-center space-y-6" aria-live="polite">
               <div className="relative inline-flex items-center justify-center">
                 <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-500/40 flex items-center justify-center">
                   <Loader2 className="w-8 h-8 text-amber-600 animate-spin" />
@@ -537,7 +609,7 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
             {step > 1 ? (
               <button
                 type="button"
-                onClick={() => setStep((step - 1) as any)}
+                onClick={() => setStep((step - 1) as 1 | 2 | 3)}
                 className="px-4 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 transition-colors"
               >
                 Back
@@ -549,7 +621,7 @@ export const EventWizardModal: React.FC<EventWizardModalProps> = ({
             {step < 3 ? (
               <button
                 type="button"
-                onClick={() => setStep((step + 1) as any)}
+                onClick={() => setStep((step + 1) as 2 | 3)}
                 className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg shadow-sm transition-all"
               >
                 <span>Continue</span>

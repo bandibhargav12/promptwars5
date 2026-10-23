@@ -1,6 +1,13 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useRef, useState } from 'react';
 import { CelebrationEvent } from '../types/event';
-import { Printer, Download, Upload, X, Check, FileText } from 'lucide-react';
+import { Printer, Download, Upload, X, FileText } from 'lucide-react';
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
+import { isValidCelebrationEvent } from '../utils/validators';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -18,13 +25,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
+  useKeyboardShortcut('Escape', onClose, isOpen);
+
   if (!isOpen) return null;
 
-  const handlePrint = () => {
+  const handlePrint = (): void => {
     window.print();
   };
 
-  const handleExportJson = () => {
+  const handleExportJson = (): void => {
     const dataStr =
       'data:text/json;charset=utf-8,' +
       encodeURIComponent(JSON.stringify(currentEvent, null, 2));
@@ -39,15 +48,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     downloadAnchor.remove();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
-        if (json.title && json.budget && json.timeline) {
+        const json: unknown = JSON.parse(event.target?.result as string);
+        if (isValidCelebrationEvent(json)) {
           onImportEvent(json);
           setImportStatus('Successfully loaded celebration plan!');
           setTimeout(() => {
@@ -55,9 +64,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             onClose();
           }, 1500);
         } else {
-          setImportStatus('Invalid event blueprint JSON format.');
+          setImportStatus('Invalid event blueprint JSON schema.');
         }
-      } catch (err) {
+      } catch (_err: unknown) {
         setImportStatus('Error reading JSON file.');
       }
     };
@@ -65,7 +74,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-sm animate-in fade-in no-print">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="export-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-sm animate-in fade-in no-print"
+    >
       <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 w-full max-w-lg overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-stone-50/60">
@@ -75,6 +89,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
             <div>
               <h3
+                id="export-modal-title"
                 className="text-sm font-bold text-stone-900"
                 style={{ fontFamily: 'var(--font-heading)' }}
               >
@@ -88,6 +103,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           <button
             onClick={onClose}
+            aria-label="Close export modal"
             className="text-stone-400 hover:text-stone-700 transition-colors p-1"
           >
             <X className="w-4 h-4" />
@@ -97,7 +113,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         {/* Body */}
         <div className="p-6 space-y-5">
           {importStatus && (
-            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-lg">
+            <div
+              role="alert"
+              className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-lg"
+            >
               {importStatus}
             </div>
           )}
@@ -115,6 +134,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
             <button
               onClick={handlePrint}
+              aria-label="Print event packet"
               className="px-3.5 py-2 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors"
             >
               Print Packet
@@ -134,6 +154,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
             <button
               onClick={handleExportJson}
+              aria-label="Download JSON file"
               className="px-3.5 py-2 bg-stone-100 text-stone-800 text-xs font-semibold rounded-lg hover:bg-stone-200 transition-colors border border-stone-300"
             >
               Download JSON
@@ -153,6 +174,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
             <button
               onClick={() => fileInputRef.current?.click()}
+              aria-label="Import JSON file"
               className="px-3.5 py-2 bg-stone-100 text-stone-800 text-xs font-semibold rounded-lg hover:bg-stone-200 transition-colors border border-stone-300"
             >
               Import File

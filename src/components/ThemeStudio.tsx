@@ -1,3 +1,8 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
 import { CelebrationEvent } from '../types/event';
 import { Copy, Check, Sparkles, Music, Palette, Compass, MessageSquareQuote, Lightbulb } from 'lucide-react';
@@ -13,13 +18,13 @@ export const ThemeStudio: React.FC<ThemeStudioProps> = ({ currentEvent, onOpenAi
 
   const theme = currentEvent.theme;
 
-  const handleCopyHex = (hex: string) => {
+  const handleCopyHex = (hex: string): void => {
     navigator.clipboard.writeText(hex);
     setCopiedHex(hex);
     setTimeout(() => setCopiedHex(null), 2000);
   };
 
-  const handleCopyInvite = () => {
+  const handleCopyInvite = (): void => {
     if (theme?.invitationWording) {
       navigator.clipboard.writeText(theme.invitationWording);
       setCopiedInvite(true);
@@ -45,7 +50,8 @@ export const ThemeStudio: React.FC<ThemeStudioProps> = ({ currentEvent, onOpenAi
 
         <button
           onClick={onOpenAiDrawer}
-          className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3.5 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100/80 hover:bg-amber-100 rounded-lg transition-colors border border-amber-200/60"
+          aria-label="Refine theme with AI consultant"
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3.5 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100/80 hover:bg-amber-100 rounded-lg transition-colors border border-amber-200/60 cursor-pointer"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-700" />
           <span>Refine Theme with AI</span>
@@ -125,7 +131,8 @@ export const ThemeStudio: React.FC<ThemeStudioProps> = ({ currentEvent, onOpenAi
                 <button
                   key={idx}
                   onClick={() => handleCopyHex(color.hex)}
-                  className="w-full group flex items-center justify-between p-2.5 rounded-lg border border-stone-100 hover:border-amber-300 hover:bg-stone-50/60 transition-all text-left"
+                  aria-label={`Copy color ${color.name} hex code ${color.hex}`}
+                  className="w-full group flex items-center justify-between p-2.5 rounded-lg border border-stone-100 hover:border-amber-300 hover:bg-stone-50/60 transition-all text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <span
@@ -165,7 +172,8 @@ export const ThemeStudio: React.FC<ThemeStudioProps> = ({ currentEvent, onOpenAi
               </div>
               <button
                 onClick={handleCopyInvite}
-                className="text-stone-500 hover:text-stone-800 transition-colors p-1"
+                aria-label="Copy invitation draft wording"
+                className="text-stone-500 hover:text-stone-800 transition-colors p-1 cursor-pointer"
                 title="Copy wording"
               >
                 {copiedInvite ? (

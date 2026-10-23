@@ -1,9 +1,9 @@
 import React from 'react';
-import { Sparkles, DollarSign, Clock, Users, Plus, Award } from 'lucide-react';
+import { Sparkles, DollarSign, Clock, Users, Plus, Award, ShieldCheck } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'overview' | 'budget' | 'timeline' | 'vendors';
-  setActiveTab: (tab: 'overview' | 'budget' | 'timeline' | 'vendors') => void;
+  activeTab: 'overview' | 'budget' | 'timeline' | 'vendors' | 'toolkit';
+  setActiveTab: (tab: 'overview' | 'budget' | 'timeline' | 'vendors' | 'toolkit') => void;
   onOpenNewEventModal: () => void;
   onOpenAiDrawer: () => void;
   onOpenSubmissionKit: () => void;
@@ -35,7 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Zone 2: 4-5 single-line navigation links */}
-        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-stone-600">
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-stone-600">
           <button
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
@@ -82,6 +82,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Users className="w-4 h-4 text-purple-600" />
             <span>Vendor Checklist</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('toolkit')}
+            className={`flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
+              activeTab === 'toolkit'
+                ? 'text-amber-700 font-semibold border-b-2 border-amber-600'
+                : 'hover:text-stone-900'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-amber-600" />
+            <span>Specialized Toolkit</span>
           </button>
 
           <button

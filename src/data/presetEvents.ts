@@ -167,6 +167,43 @@ export const PRESET_EVENTS: CelebrationEvent[] = [
         ]
       }
     ],
+    specializedTools: [
+      {
+        id: 'st-w1',
+        category: 'Ceremony & Legal',
+        title: 'Marriage License Verification & Officiant Filing',
+        detail: 'Confirm county clerk marriage license is signed by officiant and 2 witnesses immediately after ceremony.',
+        completed: true,
+      },
+      {
+        id: 'st-w2',
+        category: 'Guest Experience',
+        title: 'Seating Chart Escort Cards & Head Table Layout',
+        detail: 'Finalize seating easel at entrance and alphabetical escort table; seat immediate family in front row.',
+        completed: true,
+      },
+      {
+        id: 'st-w3',
+        category: 'Timing & Logistics',
+        title: 'Speeches, Toasts & Champagne Pour Order',
+        detail: 'Order: Welcome by Host (7:15 PM), Maid of Honor Toast (7:25 PM), Best Man Toast (7:30 PM), Couple Thank You (7:35 PM).',
+        completed: false,
+      },
+      {
+        id: 'st-w4',
+        category: 'Emergency Kit',
+        title: 'Bridal Party Emergency Kit & Garment Steamer',
+        detail: 'Prepare fabric tape, safety pins, stain remover pen, blister bandages, breath mints, and portable garment steamer.',
+        completed: false,
+      },
+      {
+        id: 'st-w5',
+        category: 'Photography',
+        title: 'Sunset Golden Hour Photo Shot List',
+        detail: 'Whisk couple away at 6:05 PM for 15-minute sunset vineyard walk while guests are seated for first course.',
+        completed: false,
+      },
+    ],
     personalizedTips: [
       'Napa late afternoon sun is bright; angle ceremony seating 20° north-east so guests are not squinting into direct sun.',
       'Repurposing the floral ceremony meadow to the head table saves approximately $1,200 in redundant floral arrangements.',
@@ -289,6 +326,36 @@ export const PRESET_EVENTS: CelebrationEvent[] = [
           'Verify audio cabling to terrace speakers'
         ]
       }
+    ],
+    specializedTools: [
+      {
+        id: 'st-b1',
+        category: 'Surprise Moments',
+        title: 'Surprise Entrance & Champagne Tower Reveal',
+        detail: 'Cue lighting dimmer and house audio fade at 7:55 PM; spotlight champagne tower at 8:00 PM for host entrance.',
+        completed: true,
+      },
+      {
+        id: 'st-b2',
+        category: 'Media & Keepsakes',
+        title: 'Childhood-to-Present Video Montage Loop & Audio Guestbook',
+        detail: 'Test projector HDMI & audio sync at 5:00 PM; set up vintage rotary phone audio guestbook for audio voice notes.',
+        completed: true,
+      },
+      {
+        id: 'st-b3',
+        category: 'Beverage Curation',
+        title: 'Signature 40th Milestone Cocktail & Mocktail Menu',
+        detail: 'Smoked Rosemary Old Fashioned ("The 1986") & Blackberry Lavender Fizz mocktail printed on cocktail napkins.',
+        completed: true,
+      },
+      {
+        id: 'st-b4',
+        category: 'Tributes & Toasts',
+        title: 'Milestone Memory Roasts & Birthday Cake Delivery',
+        detail: 'Coordinate 3 speakers (3 min limit each) followed by 3-tiered espresso cake sparkler entrance at 9:30 PM.',
+        completed: false,
+      },
     ],
     personalizedTips: [
       'For a 5-tier champagne tower, always glue the coupe bases with dry ice mist or food-grade sugar syrup if on an outdoor windy rooftop.',
@@ -424,6 +491,43 @@ export const PRESET_EVENTS: CelebrationEvent[] = [
           'Prompt 8:30 PM pump-out and removal'
         ]
       }
+    ],
+    specializedTools: [
+      {
+        id: 'st-c1',
+        category: 'Permits & Municipal',
+        title: 'City Parks Sound Permit & Street Closure Notice',
+        detail: 'Approved city permit #PK-2026-981 on file; neighborhood advisory flyers distributed 14 days in advance.',
+        completed: true,
+      },
+      {
+        id: 'st-c2',
+        category: 'Safety & Health',
+        title: 'First Aid Tent, AED Station & EMT Protocol',
+        detail: 'Designate central first-aid booth staffed by volunteer nurses; post prominent cross signage and water station.',
+        completed: true,
+      },
+      {
+        id: 'st-c3',
+        category: 'Accessibility & Inclusion',
+        title: 'ADA Accessible Ramps & Tactile Wayfinding Signage',
+        detail: 'Verify zero curb drops exceed 0.5 inches; ensure 48-inch clear corridor between all artisan booths and restrooms.',
+        completed: true,
+      },
+      {
+        id: 'st-c4',
+        category: 'Volunteer Operations',
+        title: 'Volunteer Shift Schedules & Relief Captain Check-in',
+        detail: 'Split 24 volunteers across 3 shifts (Morning Setup, Midday Hospitality, Evening Breakdown & Composting).',
+        completed: false,
+      },
+      {
+        id: 'st-c5',
+        category: 'Environmental',
+        title: 'Zero-Waste Sort Stations & Composting Partner',
+        detail: 'Pair every trash receptacle with recycling and food-scrap composting bin; 4 volunteer waste ambassadors.',
+        completed: false,
+      },
     ],
     personalizedTips: [
       'For community events with over 300 guests, install double-sided signage at all intersections so crowds flow naturally without choking points.',

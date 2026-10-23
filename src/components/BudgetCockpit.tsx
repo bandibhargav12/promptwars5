@@ -1,6 +1,12 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
 import { CelebrationEvent, BudgetCategory, BudgetItem } from '../types/event';
-import { Plus, Trash2, CheckCircle, Circle, DollarSign, Sparkles, TrendingUp, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Sparkles } from 'lucide-react';
+import { calculateBudgetSummary, formatCurrency } from '../utils/budgetCalculations';
 
 interface BudgetCockpitProps {
   currentEvent: CelebrationEvent;
@@ -21,31 +27,21 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
   const [newCatName, setNewCatName] = useState('');
   const [isAddingCategory, setIsAddingCategory] = useState(false);
 
-  // Totals calculations
-  const totalBudget = currentEvent.totalBudget;
-  const totalAllocated = currentEvent.budget.categories.reduce(
-    (sum, cat) => sum + cat.allocated,
-    0
+  // Pure typed calculation from tested utility
+  const {
+    totalActual,
+    totalPaid,
+    totalPending,
+    remainingVariance,
+    percentSpent,
+    isOverBudget,
+  } = calculateBudgetSummary(
+    currentEvent.budget.categories,
+    currentEvent.totalBudget
   );
-  const totalActual = currentEvent.budget.categories.reduce(
-    (sum, cat) =>
-      sum + cat.items.reduce((itemSum, item) => itemSum + item.actualCost, 0),
-    0
-  );
-  const totalPaid = currentEvent.budget.categories.reduce(
-    (sum, cat) =>
-      sum +
-      cat.items
-        .filter((item) => item.paid)
-        .reduce((itemSum, item) => itemSum + item.actualCost, 0),
-    0
-  );
-
-  const remaining = totalBudget - totalActual;
-  const percentSpent = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0;
 
   // Toggle paid status
-  const handleTogglePaid = (catId: string, itemId: string) => {
+  const handleTogglePaid = (catId: string, itemId: string): void => {
     const updatedCategories = currentEvent.budget.categories.map((cat) => {
       if (cat.id !== catId) return cat;
       return {
@@ -64,14 +60,15 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
   };
 
   // Update actual cost
-  const handleUpdateCost = (catId: string, itemId: string, newCost: number) => {
+  const handleUpdateCost = (catId: string, itemId: string, newCost: number): void => {
+    const safeCost = Math.max(0, newCost);
     const updatedCategories = currentEvent.budget.categories.map((cat) => {
       if (cat.id !== catId) return cat;
       return {
         ...cat,
         items: cat.items.map((item) => {
           if (item.id !== itemId) return item;
-          return { ...item, actualCost: newCost };
+          return { ...item, actualCost: safeCost };
         }),
       };
     });
@@ -83,7 +80,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
   };
 
   // Delete line item
-  const handleDeleteItem = (catId: string, itemId: string) => {
+  const handleDeleteItem = (catId: string, itemId: string): void => {
     const updatedCategories = currentEvent.budget.categories.map((cat) => {
       if (cat.id !== catId) return cat;
       return {
@@ -99,10 +96,10 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
   };
 
   // Add line item
-  const handleAddItem = (catId: string) => {
+  const handleAddItem = (catId: string): void => {
     if (!newItemName.trim()) return;
 
-    const cost = parseFloat(newItemEstimated) || 0;
+    const cost = Math.max(0, parseFloat(newItemEstimated) || 0);
     const newItem: BudgetItem = {
       id: `custom-item-${Date.now()}`,
       name: newItemName.trim(),
@@ -132,7 +129,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
   };
 
   // Add new Category
-  const handleAddCategory = () => {
+  const handleAddCategory = (): void => {
     if (!newCatName.trim()) return;
 
     const newCategory: BudgetCategory = {
@@ -172,7 +169,8 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
 
         <button
           onClick={onOpenAiDrawer}
-          className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3.5 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-100/80 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200/60"
+          aria-label="Optimize budget with AI consultant"
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto px-3.5 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-100/80 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200/60 cursor-pointer"
         >
           <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
           <span>Optimize Budget with AI</span>
@@ -186,7 +184,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
             Total Target Budget
           </div>
           <div className="text-xl md:text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">
-            ${totalBudget.toLocaleString()}
+            {formatCurrency(currentEvent.totalBudget, currentEvent.currency)}
           </div>
           <div className="text-xs text-stone-400 mt-1">
             Currency: {currentEvent.currency}
@@ -198,7 +196,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
             Committed / Spent
           </div>
           <div className="text-xl md:text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">
-            ${totalActual.toLocaleString()}
+            {formatCurrency(totalActual, currentEvent.currency)}
           </div>
           <div className="text-xs text-stone-500 mt-1 font-mono tabular-nums">
             {percentSpent}% of total target
@@ -210,10 +208,10 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
             Paid Deposits
           </div>
           <div className="text-xl md:text-2xl font-bold text-emerald-700 mt-1 font-mono tabular-nums">
-            ${totalPaid.toLocaleString()}
+            {formatCurrency(totalPaid, currentEvent.currency)}
           </div>
           <div className="text-xs text-stone-500 mt-1 font-mono tabular-nums">
-            ${(totalActual - totalPaid).toLocaleString()} pending
+            {formatCurrency(totalPending, currentEvent.currency)} pending
           </div>
         </div>
 
@@ -223,13 +221,13 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
           </div>
           <div
             className={`text-xl md:text-2xl font-bold mt-1 font-mono tabular-nums ${
-              remaining >= 0 ? 'text-stone-900' : 'text-rose-600'
+              !isOverBudget ? 'text-stone-900' : 'text-rose-600'
             }`}
           >
-            ${remaining.toLocaleString()}
+            {formatCurrency(remainingVariance, currentEvent.currency)}
           </div>
           <div className="text-xs text-stone-500 mt-1">
-            {remaining >= 0 ? 'Under target cap' : 'Over target budget'}
+            {!isOverBudget ? 'Under target cap' : 'Over target budget'}
           </div>
         </div>
       </div>
@@ -239,10 +237,18 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
         <div className="flex items-center justify-between text-xs font-medium text-stone-700">
           <span>Budget Allocation Health</span>
           <span className="font-mono tabular-nums">
-            ${totalActual.toLocaleString()} of ${totalBudget.toLocaleString()}
+            {formatCurrency(totalActual, currentEvent.currency)} of{' '}
+            {formatCurrency(currentEvent.totalBudget, currentEvent.currency)}
           </span>
         </div>
-        <div className="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
+        <div
+          role="progressbar"
+          aria-valuenow={percentSpent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Budget expenditure progress"
+          className="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden"
+        >
           <div
             className={`h-full rounded-full transition-all duration-500 ${
               percentSpent > 100
@@ -264,7 +270,8 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
           </h3>
           <button
             onClick={() => setIsAddingCategory(true)}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 transition-colors"
+            aria-label="Add new budget category"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Category</span>
@@ -276,6 +283,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
           <div className="bg-stone-50 border border-stone-200 p-4 rounded-xl flex items-center gap-3">
             <input
               type="text"
+              aria-label="New category name"
               placeholder="e.g., Guest Favors & Gifts"
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
@@ -322,7 +330,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                     <div className="text-stone-600">
                       Allocated:{' '}
                       <span className="font-semibold text-stone-900 font-mono tabular-nums">
-                        ${cat.allocated.toLocaleString()}
+                        {formatCurrency(cat.allocated, currentEvent.currency)}
                       </span>
                     </div>
                     <div className="text-stone-600">
@@ -332,12 +340,13 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                           catOverAllocated ? 'text-rose-600' : 'text-stone-900'
                         }`}
                       >
-                        ${catSpent.toLocaleString()}
+                        {formatCurrency(catSpent, currentEvent.currency)}
                       </span>
                     </div>
                     <button
                       onClick={() => setAddingToCategory(cat.id)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900"
+                      aria-label={`Add item to ${cat.name}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900 cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
                       <span>Add Item</span>
@@ -351,6 +360,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <input
                         type="text"
+                        aria-label="Item name"
                         placeholder="Item name (e.g. Acoustic sound rental)"
                         value={newItemName}
                         onChange={(e) => setNewItemName(e.target.value)}
@@ -358,6 +368,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                       />
                       <input
                         type="number"
+                        aria-label="Estimated cost"
                         placeholder="Estimated Cost ($)"
                         value={newItemEstimated}
                         onChange={(e) => setNewItemEstimated(e.target.value)}
@@ -365,6 +376,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                       />
                       <input
                         type="text"
+                        aria-label="Notes or vendor tip"
                         placeholder="Notes or vendor tip"
                         value={newItemNotes}
                         onChange={(e) => setNewItemNotes(e.target.value)}
@@ -374,13 +386,13 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                     <div className="flex items-center gap-2 justify-end">
                       <button
                         onClick={() => handleAddItem(cat.id)}
-                        className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors"
+                        className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
                       >
                         Add Line Item
                       </button>
                       <button
                         onClick={() => setAddingToCategory(null)}
-                        className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900"
+                        className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900 cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -395,7 +407,7 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                   </div>
                 ) : (
                   <div className="divide-y divide-stone-100 overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs" aria-label={`Budget items in ${cat.name}`}>
                       <thead>
                         <tr className="text-[11px] text-stone-400 uppercase tracking-wider bg-stone-50/40">
                           <th className="py-2.5 px-4 font-medium w-10">Paid</th>
@@ -417,8 +429,8 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                             <td className="py-3 px-4">
                               <button
                                 onClick={() => handleTogglePaid(cat.id, item.id)}
-                                title={item.paid ? 'Mark as Unpaid' : 'Mark as Paid Deposit'}
-                                className="text-stone-400 hover:text-emerald-600 transition-colors"
+                                aria-label={item.paid ? `Mark ${item.name} as unpaid` : `Mark ${item.name} as paid deposit`}
+                                className="text-stone-400 hover:text-emerald-600 transition-colors cursor-pointer"
                               >
                                 {item.paid ? (
                                   <CheckCircle className="w-4 h-4 text-emerald-600" />
@@ -439,12 +451,13 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                             </td>
 
                             <td className="py-3 px-4 text-right font-mono tabular-nums text-stone-600">
-                              ${item.estimatedCost.toLocaleString()}
+                              {formatCurrency(item.estimatedCost, currentEvent.currency)}
                             </td>
 
                             <td className="py-3 px-4 text-right font-mono tabular-nums font-semibold text-stone-900">
                               <input
                                 type="number"
+                                aria-label={`Actual cost for ${item.name}`}
                                 value={item.actualCost}
                                 onChange={(e) =>
                                   handleUpdateCost(
@@ -460,8 +473,8 @@ export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
                             <td className="py-3 px-4 text-center">
                               <button
                                 onClick={() => handleDeleteItem(cat.id, item.id)}
-                                className="text-stone-400 hover:text-rose-600 transition-colors p-1"
-                                title="Delete line item"
+                                aria-label={`Delete ${item.name}`}
+                                className="text-stone-400 hover:text-rose-600 transition-colors p-1 cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>

@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { CelebrationEvent } from './types/event';
-import { PRESET_EVENTS } from './data/presetEvents';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { useEvents } from './hooks/useEvents';
 import { Navbar } from './components/Navbar';
 import { EventHeader } from './components/EventHeader';
 import { ThemeStudio } from './components/ThemeStudio';
@@ -11,68 +15,34 @@ import { EventWizardModal } from './components/EventWizardModal';
 import { AiAssistantDrawer } from './components/AiAssistantDrawer';
 import { ExportModal } from './components/ExportModal';
 import { SubmissionAssistantModal } from './components/SubmissionAssistantModal';
-
-const STORAGE_KEY = 'auracelebrate_events_v1';
+import { SpecializedToolkitView } from './components/SpecializedToolkitView';
 
 export default function App() {
-  // Initialize events from localStorage or presets
-  const [events, setEvents] = useState<CelebrationEvent[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse localStorage events, using presets');
-    }
-    return PRESET_EVENTS;
-  });
+  const {
+    events,
+    currentEvent,
+    setCurrentEventId,
+    updateCurrentEvent,
+    createEvent,
+    importEvent,
+  } = useEvents();
 
-  const [currentEventId, setCurrentEventId] = useState<string>(() => {
-    return events[0]?.id || PRESET_EVENTS[0].id;
-  });
-
-  const [activeTab, setActiveTab] = useState<'overview' | 'budget' | 'timeline' | 'vendors'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'budget' | 'timeline' | 'vendors' | 'toolkit'>('overview');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSubmissionKitOpen, setIsSubmissionKitOpen] = useState(false);
 
-  // Sync to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
-    } catch (e) {
-      console.error('Failed to save events to localStorage', e);
-    }
-  }, [events]);
-
-  const currentEvent =
-    events.find((e) => e.id === currentEventId) || events[0] || PRESET_EVENTS[0];
-
-  // Update current event
-  const handleUpdateEvent = (updated: CelebrationEvent) => {
-    setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
-  };
-
-  // Add new event
-  const handleEventCreated = (newEvent: CelebrationEvent) => {
-    setEvents((prev) => [newEvent, ...prev]);
-    setCurrentEventId(newEvent.id);
-    setActiveTab('overview');
-  };
-
-  // Import event
-  const handleImportEvent = (importedEvent: CelebrationEvent) => {
-    setEvents((prev) => [importedEvent, ...prev]);
-    setCurrentEventId(importedEvent.id);
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-stone-900 selection:bg-amber-200 selection:text-amber-900">
+      {/* WCAG 2.1 Accessible Skip to Main Content Link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2 focus:bg-amber-600 focus:text-white focus:rounded-lg focus:shadow-md focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       {/* Top Bar Navigation (Strict 3-zone contract) */}
       <Navbar
         activeTab={activeTab}
@@ -82,8 +52,8 @@ export default function App() {
         onOpenSubmissionKit={() => setIsSubmissionKitOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1">
+      {/* Main Content Viewport */}
+      <main className="flex-1" id="main-content">
         {/* Active Celebration Header Banner & Metrics */}
         <EventHeader
           currentEvent={currentEvent}
@@ -95,7 +65,7 @@ export default function App() {
         />
 
         {/* Tab View Container */}
-        <div className="max-w-7xl mx-auto px-6 pb-20 no-print">
+        <div className="max-w-7xl mx-auto px-6 pb-20 no-print" role="region" aria-label="Celebration Workspace">
           {activeTab === 'overview' && (
             <ThemeStudio
               currentEvent={currentEvent}
@@ -106,7 +76,7 @@ export default function App() {
           {activeTab === 'budget' && (
             <BudgetCockpit
               currentEvent={currentEvent}
-              onUpdateEvent={handleUpdateEvent}
+              onUpdateEvent={updateCurrentEvent}
               onOpenAiDrawer={() => setIsAiDrawerOpen(true)}
             />
           )}
@@ -114,7 +84,7 @@ export default function App() {
           {activeTab === 'timeline' && (
             <TimelineMatrix
               currentEvent={currentEvent}
-              onUpdateEvent={handleUpdateEvent}
+              onUpdateEvent={updateCurrentEvent}
               onOpenAiDrawer={() => setIsAiDrawerOpen(true)}
             />
           )}
@@ -122,14 +92,22 @@ export default function App() {
           {activeTab === 'vendors' && (
             <VendorBoard
               currentEvent={currentEvent}
-              onUpdateEvent={handleUpdateEvent}
+              onUpdateEvent={updateCurrentEvent}
+              onOpenAiDrawer={() => setIsAiDrawerOpen(true)}
+            />
+          )}
+
+          {activeTab === 'toolkit' && (
+            <SpecializedToolkitView
+              currentEvent={currentEvent}
+              onUpdateEvent={updateCurrentEvent}
               onOpenAiDrawer={() => setIsAiDrawerOpen(true)}
             />
           )}
         </div>
 
-        {/* PRINTABLE MASTER PACKET (Visible strictly during Print) */}
-        <div className="hidden print:block p-8 space-y-6 text-black bg-white">
+        {/* PRINTABLE MASTER PACKET (Rendered during Print only) */}
+        <div className="hidden print:block p-8 space-y-6 text-black bg-white" aria-hidden="true">
           <div className="border-b-2 border-black pb-4">
             <h1 className="text-3xl font-bold">{currentEvent.title}</h1>
             <div className="text-sm text-stone-600 mt-1">
@@ -233,7 +211,7 @@ export default function App() {
       <EventWizardModal
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
-        onEventCreated={handleEventCreated}
+        onEventCreated={createEvent}
       />
 
       <AiAssistantDrawer
@@ -246,7 +224,7 @@ export default function App() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         currentEvent={currentEvent}
-        onImportEvent={handleImportEvent}
+        onImportEvent={importEvent}
       />
 
       <SubmissionAssistantModal
@@ -255,7 +233,7 @@ export default function App() {
       />
 
       {/* Quiet, Human-Designed Footer */}
-      <footer className="border-t border-stone-200/80 bg-white py-6 text-center text-xs text-stone-400 no-print">
+      <footer className="border-t border-stone-200/80 bg-white py-6 text-center text-xs text-stone-400 no-print" role="contentinfo">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-stone-500">
             AuraCelebrate · Intelligent Celebration & Event Planning

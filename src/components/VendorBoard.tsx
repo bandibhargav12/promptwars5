@@ -1,6 +1,12 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
 import { CelebrationEvent, VendorItem } from '../types/event';
-import { Users, Phone, Mail, CheckSquare, Square, Plus, Sparkles, DollarSign, FileText } from 'lucide-react';
+import { Phone, CheckSquare, Plus, Sparkles, FileText } from 'lucide-react';
+import { formatCurrency } from '../utils/budgetCalculations';
 
 interface VendorBoardProps {
   currentEvent: CelebrationEvent;
@@ -25,7 +31,7 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
   const [newChecklist, setNewChecklist] = useState('');
 
   // Status stages
-  const statuses: ('Prospecting' | 'In Talks' | 'Quoted' | 'Booked' | 'Completed')[] = [
+  const statuses: VendorItem['status'][] = [
     'Prospecting',
     'In Talks',
     'Quoted',
@@ -36,8 +42,8 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
   // Update vendor status
   const handleUpdateStatus = (
     vendorId: string,
-    status: 'Prospecting' | 'In Talks' | 'Quoted' | 'Booked' | 'Completed'
-  ) => {
+    status: VendorItem['status']
+  ): void => {
     const updatedVendors = currentEvent.vendors.map((v) => {
       if (v.id === vendorId) return { ...v, status };
       return v;
@@ -50,7 +56,7 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
   };
 
   // Add new vendor
-  const handleAddVendor = () => {
+  const handleAddVendor = (): void => {
     if (!newName.trim() || !newCategory.trim()) return;
 
     const checklistItems = newChecklist
@@ -63,7 +69,7 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
       category: newCategory.trim(),
       name: newName.trim(),
       contact: newContact.trim() || 'Pending details',
-      quoteAmount: parseFloat(newQuote) || 0,
+      quoteAmount: Math.max(0, parseFloat(newQuote) || 0),
       status: 'In Talks',
       notes: newNotes.trim() || undefined,
       checklist:
@@ -115,7 +121,8 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={onOpenAiDrawer}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-purple-900 bg-purple-100/80 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200/60"
+            aria-label="Generate vendor RFP interview questions"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-purple-900 bg-purple-100/80 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200/60 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-purple-700" />
             <span>Generate Vendor RFP Questions</span>
@@ -123,7 +130,8 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
 
           <button
             onClick={() => setIsAddingVendor(true)}
-            className="px-3 py-1.5 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors flex items-center gap-1 shrink-0"
+            aria-label="Add new partner vendor"
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 rounded-lg transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Partner</span>
@@ -132,12 +140,14 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
       </div>
 
       {/* Status Filter Tabs (Segmented control) */}
-      <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg overflow-x-auto border border-stone-200/80 max-w-full">
+      <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg overflow-x-auto border border-stone-200/80 max-w-full" role="tablist">
         {['All', ...statuses].map((st) => (
           <button
             key={st}
+            role="tab"
+            aria-selected={selectedStatus === st}
             onClick={() => setSelectedStatus(st)}
-            className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               selectedStatus === st
                 ? 'bg-white text-stone-900 shadow-sm font-semibold'
                 : 'text-stone-600 hover:text-stone-900'
@@ -160,6 +170,7 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input
               type="text"
+              aria-label="Vendor category"
               placeholder="Category (e.g. Photography, Florals, Catering)"
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
@@ -167,6 +178,7 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
             />
             <input
               type="text"
+              aria-label="Vendor company or contact name"
               placeholder="Company or Contact Name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -174,6 +186,7 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
             />
             <input
               type="text"
+              aria-label="Vendor email or phone"
               placeholder="Email / Phone / Instagram handle"
               value={newContact}
               onChange={(e) => setNewContact(e.target.value)}
@@ -181,6 +194,7 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
             />
             <input
               type="number"
+              aria-label="Vendor quote amount"
               placeholder="Quote Amount ($)"
               value={newQuote}
               onChange={(e) => setNewQuote(e.target.value)}
@@ -188,12 +202,14 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
             />
             <input
               type="text"
+              aria-label="Vendor notes"
               placeholder="Key notes, overtime terms, dietary policies"
               value={newNotes}
               onChange={(e) => setNewNotes(e.target.value)}
               className="px-3 py-1.5 text-xs rounded-lg border border-stone-300 bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
             <textarea
+              aria-label="Vendor checklist items"
               placeholder="Checklist items (one per line, e.g. Insurance certificate, Arrival time)"
               value={newChecklist}
               onChange={(e) => setNewChecklist(e.target.value)}
@@ -203,13 +219,13 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
           <div className="flex justify-end gap-2">
             <button
               onClick={handleAddVendor}
-              className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors"
+              className="px-3.5 py-1.5 bg-stone-900 text-white text-xs font-semibold rounded-lg hover:bg-stone-800 transition-colors cursor-pointer"
             >
               Save Vendor
             </button>
             <button
               onClick={() => setIsAddingVendor(false)}
-              className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900"
+              className="px-3 py-1.5 text-xs text-stone-600 hover:text-stone-900 cursor-pointer"
             >
               Cancel
             </button>
@@ -238,10 +254,11 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
                 {/* Status Dropdown */}
                 <select
                   value={vendor.status}
+                  aria-label={`Status for ${vendor.name}`}
                   onChange={(e) =>
                     handleUpdateStatus(
                       vendor.id,
-                      e.target.value as any
+                      e.target.value as VendorItem['status']
                     )
                   }
                   className="text-xs font-semibold rounded-lg border border-stone-200 bg-stone-50/80 px-2.5 py-1 text-stone-700 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer"
@@ -262,12 +279,12 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
                 <div className="text-right">
                   <div className="text-xs text-stone-400 font-medium">Quote</div>
                   <div className="text-sm font-bold text-stone-900 font-mono tabular-nums">
-                    ${vendor.quoteAmount.toLocaleString()}
+                    {formatCurrency(vendor.quoteAmount, currentEvent.currency)}
                   </div>
                 </div>
               </div>
 
-              {/* Contact Info (Clean text) */}
+              {/* Contact Info */}
               <div className="text-xs text-stone-600 flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
                 <span className="truncate">{vendor.contact}</span>

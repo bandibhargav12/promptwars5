@@ -2,5 +2,7 @@
   "name": "AuraCelebrate - GenAI Event Planner",
   "description": "Intelligent GenAI-powered planning assistant to organize weddings, birthdays, and community events with tailored budgets, timelines, vendor checklists, and themes.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
