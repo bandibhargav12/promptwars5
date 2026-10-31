@@ -7,11 +7,20 @@ import React, { useState } from 'react';
 import { CelebrationEvent } from '../types/event';
 import { Copy, Check, Sparkles, Music, Palette, Compass, MessageSquareQuote, Lightbulb } from 'lucide-react';
 
+/**
+ * Props specification for the ThemeStudio component.
+ */
 interface ThemeStudioProps {
+  /** The currently active celebration event containing theme and aesthetic data */
   currentEvent: CelebrationEvent;
+  /** Callback to launch the AI advisory assistant for creative theme refinement */
   onOpenAiDrawer: () => void;
 }
 
+/**
+ * ThemeStudio component rendering the creative concept, sensory atmosphere,
+ * harmonized color swatches with one-click hex copying, and invitation wording.
+ */
 export const ThemeStudio: React.FC<ThemeStudioProps> = ({ currentEvent, onOpenAiDrawer }) => {
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);

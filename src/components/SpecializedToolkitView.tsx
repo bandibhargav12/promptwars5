@@ -18,12 +18,23 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
+/**
+ * Props specification for the SpecializedToolkitView component.
+ */
 interface SpecializedToolkitViewProps {
+  /** The currently active celebration event */
   currentEvent: CelebrationEvent;
+  /** Callback fired to persist modifications to specialized toolkit items */
   onUpdateEvent: (updated: CelebrationEvent) => void;
+  /** Callback to launch the AI advisory assistant for domain requirements */
   onOpenAiDrawer: () => void;
 }
 
+/**
+ * SpecializedToolkitView component providing domain-specific workflows and compliance
+ * tracking tailored to specific celebration archetypes (e.g. Wedding legalities,
+ * Birthday surprises, Community safety permits and volunteer management).
+ */
 export const SpecializedToolkitView: React.FC<SpecializedToolkitViewProps> = ({
   currentEvent,
   onUpdateEvent,

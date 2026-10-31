@@ -2,16 +2,30 @@ import React, { useState } from 'react';
 import { CelebrationEvent } from '../types/event';
 import { Calendar, MapPin, Users, DollarSign, ChevronDown, Printer, Sparkles, CheckCircle2 } from 'lucide-react';
 import { calculateBudgetSummary, formatCurrency } from '../utils/budgetCalculations';
+import { EVENT_TYPE_CONFIGS } from '../constants/eventConstants';
 
+/**
+ * Props contract for the EventHeader component.
+ */
 interface EventHeaderProps {
+  /** The currently active celebration event */
   currentEvent: CelebrationEvent;
+  /** Full list of all registered celebrations */
   allEvents: CelebrationEvent[];
+  /** Callback fired when the user selects a different event from the switcher */
   onSelectEvent: (event: CelebrationEvent) => void;
+  /** Callback to trigger the AI Blueprint Creator modal */
   onOpenNewEventModal: () => void;
+  /** Callback to open the AI Advisory Drawer */
   onOpenAiDrawer: () => void;
+  /** Callback to open the Export / Import modal */
   onOpenExportModal: () => void;
 }
 
+/**
+ * EventHeader component displaying the visual hero banner, celebration title,
+ * event switcher dropdown, and high-level financial/guest statistics.
+ */
 export const EventHeader: React.FC<EventHeaderProps> = ({
   currentEvent,
   allEvents,
@@ -28,12 +42,8 @@ export const EventHeader: React.FC<EventHeaderProps> = ({
     currentEvent.totalBudget
   );
 
-  const eventTypeLabel = {
-    wedding: 'Wedding Celebration',
-    birthday: 'Milestone Birthday',
-    community: 'Community Gathering',
-    custom: 'Custom Celebration',
-  }[currentEvent.type];
+  const eventTypeLabel =
+    EVENT_TYPE_CONFIGS[currentEvent.type]?.label || 'Celebration Plan';
 
   return (
     <section className="relative bg-white border-b border-stone-200/80 mb-6">

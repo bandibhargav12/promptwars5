@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { calculateBudgetSummary, formatCurrency } from '../utils/budgetCalculations';
+import {
+  calculateBudgetSummary,
+  calculateCategoryVariance,
+  formatCurrency,
+} from '../utils/budgetCalculations';
 import { BudgetCategory } from '../types/event';
 
 describe('budgetCalculations Utility', () => {
@@ -59,6 +63,28 @@ describe('budgetCalculations Utility', () => {
     expect(summary.remainingVariance).toBe(0);
     expect(summary.percentSpent).toBe(0);
     expect(summary.isOverBudget).toBe(false);
+  });
+
+  it('calculates category variance and over-allocation correctly', () => {
+    const venueCategory = sampleCategories[0]; // allocated 10000, actual 8200
+    const varianceMetrics = calculateCategoryVariance(venueCategory);
+
+    expect(varianceMetrics.allocated).toBe(10000);
+    expect(varianceMetrics.actualSpend).toBe(8200);
+    expect(varianceMetrics.variance).toBe(1800);
+    expect(varianceMetrics.percentUtilized).toBe(82);
+    expect(varianceMetrics.isOverAllocated).toBe(false);
+
+    const overAllocatedCat: BudgetCategory = {
+      id: 'cat-over',
+      name: 'Decor',
+      allocated: 2000,
+      items: [{ id: 'd1', name: 'Flowers', estimatedCost: 2000, actualCost: 2600, paid: true }],
+    };
+    const overMetrics = calculateCategoryVariance(overAllocatedCat);
+    expect(overMetrics.variance).toBe(-600);
+    expect(overMetrics.isOverAllocated).toBe(true);
+    expect(overMetrics.percentUtilized).toBe(130);
   });
 
   it('formats various currencies accurately with proper international symbols', () => {

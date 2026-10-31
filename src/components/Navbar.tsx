@@ -1,14 +1,33 @@
 import React from 'react';
 import { Sparkles, DollarSign, Clock, Users, Plus, Award, ShieldCheck } from 'lucide-react';
 
+/**
+ * Navigation tabs supported in the primary top bar.
+ */
+export type NavTabId = 'overview' | 'budget' | 'timeline' | 'vendors' | 'toolkit';
+
+/**
+ * Props specification for the Navbar component.
+ */
 interface NavbarProps {
-  activeTab: 'overview' | 'budget' | 'timeline' | 'vendors' | 'toolkit';
-  setActiveTab: (tab: 'overview' | 'budget' | 'timeline' | 'vendors' | 'toolkit') => void;
+  /** The currently active tab identifier */
+  activeTab: NavTabId;
+  /** Callback fired to switch the active workspace tab */
+  setActiveTab: (tab: NavTabId) => void;
+  /** Callback to trigger the AI Blueprint Creator modal */
   onOpenNewEventModal: () => void;
+  /** Callback to open the AI Advisory Drawer */
   onOpenAiDrawer: () => void;
+  /** Callback to open the Hack2skill Submission Assistant */
   onOpenSubmissionKit: () => void;
 }
 
+/**
+ * Navbar component adhering strictly to the 3-zone header contract:
+ * Zone 1: Distinctive text wordmark with subtle metallic badge.
+ * Zone 2: Centered tab segmented navigation with active state indicators.
+ * Zone 3: Direct action buttons (AI Assistant & New Blueprint Wizard).
+ */
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,

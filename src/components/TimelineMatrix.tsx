@@ -8,12 +8,23 @@ import { CelebrationEvent, MilestoneItem, DayOfScheduleItem } from '../types/eve
 import { Clock, Calendar, Plus, CheckCircle2, Circle, MapPin, User, Sparkles, Filter } from 'lucide-react';
 import { sortDayOfSchedule, calculateMilestoneProgress } from '../utils/timelineUtils';
 
+/**
+ * Props specification for the TimelineMatrix component.
+ */
 interface TimelineMatrixProps {
+  /** The currently active celebration event */
   currentEvent: CelebrationEvent;
+  /** Callback fired to persist modifications to milestones or schedule items */
   onUpdateEvent: (updated: CelebrationEvent) => void;
+  /** Callback to launch the AI advisory assistant for timeline schedule refinement */
   onOpenAiDrawer: () => void;
 }
 
+/**
+ * TimelineMatrix component providing dual-view schedule management:
+ * 1) Hour-by-hour day-of run-of-show cues with lead assignments and zone tracking.
+ * 2) Long-range preparation milestones with progress percentage gauges.
+ */
 export const TimelineMatrix: React.FC<TimelineMatrixProps> = ({
   currentEvent,
   onUpdateEvent,

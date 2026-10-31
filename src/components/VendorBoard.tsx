@@ -7,13 +7,24 @@ import React, { useState } from 'react';
 import { CelebrationEvent, VendorItem } from '../types/event';
 import { Phone, CheckSquare, Plus, Sparkles, FileText } from 'lucide-react';
 import { formatCurrency } from '../utils/budgetCalculations';
+import { VENDOR_STATUS_OPTIONS, VendorStatus } from '../constants/eventConstants';
 
+/**
+ * Props specification for the VendorBoard component.
+ */
 interface VendorBoardProps {
+  /** The currently active celebration event */
   currentEvent: CelebrationEvent;
+  /** Callback fired to persist modifications to vendor records */
   onUpdateEvent: (updated: CelebrationEvent) => void;
+  /** Callback to launch the AI advisory assistant */
   onOpenAiDrawer: () => void;
 }
 
+/**
+ * VendorBoard component providing pipeline CRM tracking for celebration vendors,
+ * contract fee records, vetting question checklists, and procurement status stages.
+ */
 export const VendorBoard: React.FC<VendorBoardProps> = ({
   currentEvent,
   onUpdateEvent,
@@ -30,14 +41,8 @@ export const VendorBoard: React.FC<VendorBoardProps> = ({
   const [newNotes, setNewNotes] = useState('');
   const [newChecklist, setNewChecklist] = useState('');
 
-  // Status stages
-  const statuses: VendorItem['status'][] = [
-    'Prospecting',
-    'In Talks',
-    'Quoted',
-    'Booked',
-    'Completed',
-  ];
+  // Status stages from centralized configuration
+  const statuses = VENDOR_STATUS_OPTIONS;
 
   // Update vendor status
   const handleUpdateStatus = (

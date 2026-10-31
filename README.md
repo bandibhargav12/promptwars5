@@ -40,10 +40,12 @@ AuraCelebrate utilizes a secure, server-side Express architecture with `@google/
 ## 🛡️ Evaluation Metrics Breakdown
 
 ### 1. Code Quality (Target: 99–100%)
-- Strict TypeScript with modular architecture across `components/`, `services/`, `hooks/`, and `utils/`.
+- Enterprise strict TypeScript configuration (`strict`, `noImplicitAny`, `strictNullChecks`, `noImplicitReturns`) with zero type errors.
+- Comprehensive JSDoc/TSDoc specifications across all domain models (`src/types/event.ts`), pure utility functions, and React component props.
+- Centralized domain constants dictionary (`src/constants/eventConstants.ts`) eliminating magic strings and scattered literals.
 - Pure utility functions with zero `any` types (`budgetCalculations.ts`, `timelineUtils.ts`, `validators.ts`).
-- React `ErrorBoundary` with diagnostics and session reset mechanisms.
-- Typed `aiService` client with `AbortController` timeouts and graceful fallback handling.
+- React `ErrorBoundary` with live session recovery and diagnostic logging.
+- Typed `aiService` client with `AbortController` timeouts and typed `AiServiceError` class.
 - Zero build warnings or type errors (`tsc --noEmit` clean).
 
 ### 2. Security (Target: 100%)
@@ -58,13 +60,15 @@ AuraCelebrate utilizes a secure, server-side Express architecture with `@google/
 - Tabular figures (`tabular-nums`) to prevent layout thrashing and jitter during budget adjustments.
 
 ### 4. Testing (Target: 100%)
-- Vitest automated test suite featuring **28 unit tests across 6 test suites**:
+- Vitest automated test suite featuring **39 unit tests across 8 test suites**:
   - `src/__tests__/eventPlanner.test.ts` (Preset data integrity & schemas)
   - `src/__tests__/specializedToolkit.test.ts` (Domain logic for weddings, birthdays, community)
   - `src/__tests__/budgetEdgeCases.test.ts` (Zero budgets, multi-currency, negative numbers, million-scale)
   - `src/__tests__/budgetCalculations.test.ts` (Variance and actual spend math)
   - `src/__tests__/timelineUtils.test.ts` (Time parsing, 24-hr sorting, milestone metrics)
-  - `src/__tests__/validators.test.ts` (String sanitization, event validation)
+  - `src/__tests__/validators.test.ts` (Deep type guards, string sanitization, event validation)
+  - `src/__tests__/eventConstants.test.ts` (Currency configs, vendor pipeline stages, input limits)
+  - `src/__tests__/aiService.test.ts` (AiServiceError hierarchy, rate-limit flags, HTTP status codes)
 - Run tests: `npm test`
 
 ### 5. Accessibility (WCAG 2.1 AA/AAA)

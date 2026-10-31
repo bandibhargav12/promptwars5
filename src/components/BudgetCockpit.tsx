@@ -8,12 +8,22 @@ import { CelebrationEvent, BudgetCategory, BudgetItem } from '../types/event';
 import { Plus, Trash2, CheckCircle, Circle, Sparkles } from 'lucide-react';
 import { calculateBudgetSummary, formatCurrency } from '../utils/budgetCalculations';
 
+/**
+ * Props specification for the BudgetCockpit component.
+ */
 interface BudgetCockpitProps {
+  /** The currently active celebration event */
   currentEvent: CelebrationEvent;
+  /** Callback fired to persist modifications to budget categories or line items */
   onUpdateEvent: (updated: CelebrationEvent) => void;
+  /** Callback to launch the AI advisory assistant for budget optimization */
   onOpenAiDrawer: () => void;
 }
 
+/**
+ * BudgetCockpit component offering category allocation management, inline expense tracking,
+ * deposit settled toggles, live variance gauges, and AI cost-saving optimizations.
+ */
 export const BudgetCockpit: React.FC<BudgetCockpitProps> = ({
   currentEvent,
   onUpdateEvent,

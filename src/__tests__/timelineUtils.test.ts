@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseTimeToMinutes,
+  formatMinutesToTime,
   sortDayOfSchedule,
   calculateMilestoneProgress,
 } from '../utils/timelineUtils';
@@ -18,6 +19,15 @@ describe('timelineUtils Utility', () => {
     expect(parseTimeToMinutes('12:00 PM')).toBe(720);
     expect(parseTimeToMinutes('01:15 PM')).toBe(795);
     expect(parseTimeToMinutes('11:45 PM')).toBe(1425);
+    expect(parseTimeToMinutes('invalid format')).toBe(9999);
+  });
+
+  it('accurately converts minutes from midnight to formatted 12-hour AM/PM string', () => {
+    expect(formatMinutesToTime(0)).toBe('12:00 AM');
+    expect(formatMinutesToTime(540)).toBe('09:00 AM');
+    expect(formatMinutesToTime(720)).toBe('12:00 PM');
+    expect(formatMinutesToTime(870)).toBe('02:30 PM');
+    expect(formatMinutesToTime(-5)).toBe('12:00 AM');
   });
 
   it('chronologically sorts day-of schedule cues regardless of initial order', () => {
